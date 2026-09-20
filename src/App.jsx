@@ -6,7 +6,7 @@ import {
   saveHanjaItems,
   saveWordItems,
 } from './utils/storage';
-import { fetchStudyDataFromFirebase } from './utils/firebaseService';
+import { fetchStudyDataFromGoogleSheets } from './utils/googleSheetsService';
 
 import BottomNav from './components/BottomNav';
 import HanjaTab from './components/HanjaTab';
@@ -19,6 +19,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('hanja');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
 
   // Core Data States
   const [studySets, setStudySetsState] = useState([]);
@@ -26,14 +28,20 @@ function App() {
   const [hanjaItems, setHanjaItemsState] = useState([]);
   const [wordItems, setWordItemsState] = useState([]);
 
-  // Load from Firebase on Mount (with localStorage fallback)
-  const loadData = async () => {
-    setIsLoading(true);
+  // Load from Google Sheets on Mount (with localStorage fallback)
+  const loadData = async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setIsSyncing(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
-      const data = await fetchStudyDataFromFirebase();
+      const data = await fetchStudyDataFromGoogleSheets();
       setStudySetsState(data.studySets);
       setHanjaItemsState(data.hanjaItems);
       setWordItemsState(data.wordItems);
+      setLastSyncTime(new Date());
 
       const savedActiveId = getActiveSetId();
       const validActiveId = data.studySets.some((s) => s.id === savedActiveId)
@@ -41,10 +49,12 @@ function App() {
         : data.studySets[0]?.id || '';
 
       setActiveSetIdState(validActiveId);
+      return data;
     } catch (err) {
-      console.error('Failed to load study data:', err);
+      console.error('Failed to load study data from Google Sheets:', err);
     } finally {
       setIsLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -84,6 +94,8 @@ function App() {
         setHanjaItems={setHanjaItems}
         wordItems={wordItems}
         setWordItems={setWordItems}
+        onRefreshData={() => loadData(true)}
+        isSyncing={isSyncing}
         onClose={() => setIsAdminMode(false)}
       />
     );
@@ -221,6 +233,9 @@ function App() {
               studySets={studySets}
               activeSetId={activeSetId}
               setActiveSetId={setActiveSetId}
+              onRefreshData={() => loadData(true)}
+              isSyncing={isSyncing}
+              lastSyncTime={lastSyncTime}
               onOpenAdmin={() => setIsAdminMode(true)}
             />
           )}
