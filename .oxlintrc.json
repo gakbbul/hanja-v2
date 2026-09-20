@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react"],
+  "rules": {
+    "react/jsx-no-target-blank": "error",
+    "react/jsx-key": "error",
+    "react/no-direct-mutation-state": "error"
+  }
+}
